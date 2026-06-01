@@ -1,0 +1,155 @@
+# yii3-audit-log
+
+## Install
+
+```bash
+composer require rasuvaeff/yii3-audit-log
+```
+
+## Rules
+
+- Masker runs inside `AuditLogger::log()` before the event reaches the writer.
+- `AuditChangeSet::fromArrays()` only includes fields where `old !== new` (strict).
+- Empty change sets are skipped by default (`skipEmptyChangeSets: true`).
+- Masking is case-insensitive; masked value is `'***'`.
+- Default sensitive keys: `password`, `secret`, `token`, `api_key`, `credit_card`.
+- DB writer lives in a separate adapter — core has no DB dependency.
+
+## Yii3 config-plugin
+
+Package provides `config-plugin` with `config/di.php` and `config/params.php`.
+Core binds only `AuditLogger` and `SensitiveValueMasker`. It does NOT bind
+`AuditWriter` or `Psr\Clock\ClockInterface`; a backend package or app config
+must provide those exactly once.
+
+Default params:
+
+```php
+return [
+    'rasuvaeff/yii3-audit-log' => [
+        'sensitiveKeys' => ['password', 'secret', 'token', 'api_key', 'credit_card'],
+        'skipEmptyChangeSets' => true,
+    ],
+];
+```
+
+App-level config-only wiring example:
+
+```php
+use Psr\Clock\ClockInterface;
+use Rasuvaeff\Yii3AuditLog\AuditWriter;
+
+return [
+    AuditWriter::class => MyAuditWriter::class,
+    ClockInterface::class => MyClock::class,
+];
+```
+
+## API
+
+### AuditLogger
+
+```php
+use Rasuvaeff\Yii3AuditLog\AuditLogger;
+use Rasuvaeff\Yii3AuditLog\SensitiveValueMasker;
+
+$logger = new AuditLogger(
+    writer: $writer,
+    clock: $clock,
+    masker: new SensitiveValueMasker(),  // optional
+    skipEmptyChangeSets: true,           // default
+);
+
+$logger->logChange(actor: $actor, subject: $subject, changes: $changes);
+$logger->logCreate(actor: $actor, subject: $subject, changes: $changes);
+$logger->logDelete(actor: $actor, subject: $subject, changes: $changes);
+$logger->log(actor: $actor, action: 'approve', subject: $subject, changes: $changes);
+```
+
+### AuditActor
+
+```php
+use Rasuvaeff\Yii3AuditLog\AuditActor;
+
+$actor = AuditActor::user(id: '42', name: 'John'); // name optional
+$actor = AuditActor::system();
+
+$actor->getType();    // 'user' | 'system' | custom
+$actor->getId();      // ?string
+$actor->getName();    // ?string
+$actor->isSystem();   // bool
+```
+
+### AuditSubject
+
+```php
+use Rasuvaeff\Yii3AuditLog\AuditSubject;
+
+$subject = AuditSubject::of(type: 'order', id: '42');
+$subject->getType(); // 'order'
+$subject->getId();   // '42'
+```
+
+### AuditChangeSet
+
+```php
+use Rasuvaeff\Yii3AuditLog\AuditChangeSet;
+
+// From arrays — only changed fields:
+$changes = AuditChangeSet::fromArrays(
+    old: ['status' => 'new', 'total' => 0],
+    new: ['status' => 'paid', 'total' => 99],
+);
+
+$changes = AuditChangeSet::empty();
+
+$changes->getChanges(); // list<AuditChange>
+$changes->isEmpty();    // bool
+$changes->count();      // int
+```
+
+### AuditChange
+
+```php
+use Rasuvaeff\Yii3AuditLog\AuditChange;
+
+$change = new AuditChange(field: 'status', oldValue: 'new', newValue: 'paid');
+$change->getField();    // 'status'
+$change->getOldValue(); // mixed
+$change->getNewValue(); // mixed
+```
+
+### AuditMetadata
+
+```php
+use Rasuvaeff\Yii3AuditLog\AuditMetadata;
+
+$meta = new AuditMetadata(
+    requestId: 'req-abc',
+    ip: '127.0.0.1',
+    userAgent: 'Mozilla/5.0',
+);
+```
+
+### SensitiveValueMasker
+
+```php
+use Rasuvaeff\Yii3AuditLog\SensitiveValueMasker;
+
+$masker = new SensitiveValueMasker();
+$masked = $masker->mask(['password' => 'secret', 'name' => 'John']);
+// ['password' => '***', 'name' => 'John']
+
+$maskedSet = $masker->maskChangeSet($changeSet); // AuditChangeSet
+```
+
+### AuditWriter (implement your own)
+
+```php
+interface AuditWriter
+{
+    public function write(AuditEvent $event): void;
+}
+```
+
+Built-in: `NullAuditWriter` (no-op), `InMemoryAuditWriter` (for tests).
