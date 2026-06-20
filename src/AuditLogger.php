@@ -25,7 +25,7 @@ final readonly class AuditLogger
         AuditChangeSet $changes,
         ?AuditMetadata $metadata = null,
     ): void {
-        $changeSet = $this->masker instanceof \Rasuvaeff\Yii3AuditLog\SensitiveValueMasker
+        $changeSet = $this->masker instanceof SensitiveValueMasker
             ? $this->masker->maskChangeSet($changes)
             : $changes;
 
