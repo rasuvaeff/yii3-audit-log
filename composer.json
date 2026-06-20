@@ -1,7 +1,6 @@
 {
     "name": "rasuvaeff/yii3-audit-log",
     "description": "Audit trail for Yii3 applications: who changed what and when, with sensitive value masking",
-    "version": "1.0.0",
     "license": "BSD-3-Clause",
     "type": "library",
     "keywords": [
