@@ -5,48 +5,47 @@ declare(strict_types=1);
 namespace Rasuvaeff\Yii3AuditLog\Tests;
 
 use InvalidArgumentException;
-use PHPUnit\Framework\Attributes\CoversClass;
-use PHPUnit\Framework\Attributes\Test;
-use PHPUnit\Framework\TestCase;
 use Rasuvaeff\Yii3AuditLog\AuditChange;
+use Testo\Assert;
+use Testo\Codecov\Covers;
+use Testo\Test;
 
-#[CoversClass(AuditChange::class)]
-final class AuditChangeTest extends TestCase
+#[Test]
+#[Covers(AuditChange::class)]
+final class AuditChangeTest
 {
-    #[Test]
     public function holdsValues(): void
     {
         $change = new AuditChange(field: 'status', oldValue: 'new', newValue: 'paid');
 
-        $this->assertSame('status', $change->getField());
-        $this->assertSame('new', $change->getOldValue());
-        $this->assertSame('paid', $change->getNewValue());
+        Assert::same($change->getField(), 'status');
+        Assert::same($change->getOldValue(), 'new');
+        Assert::same($change->getNewValue(), 'paid');
     }
 
-    #[Test]
     public function acceptsNullValues(): void
     {
         $change = new AuditChange(field: 'note', oldValue: null, newValue: 'added');
 
-        $this->assertNull($change->getOldValue());
-        $this->assertSame('added', $change->getNewValue());
+        Assert::null($change->getOldValue());
+        Assert::same($change->getNewValue(), 'added');
     }
 
-    #[Test]
     public function acceptsMixedTypes(): void
     {
         $change = new AuditChange(field: 'amount', oldValue: 0, newValue: 99.95);
 
-        $this->assertSame(0, $change->getOldValue());
-        $this->assertSame(99.95, $change->getNewValue());
+        Assert::same($change->getOldValue(), 0);
+        Assert::same($change->getNewValue(), 99.95);
     }
 
-    #[Test]
     public function throwsOnEmptyField(): void
     {
-        $this->expectException(InvalidArgumentException::class);
-        $this->expectExceptionMessage('Change field must not be empty');
-
-        new AuditChange(field: '', oldValue: null, newValue: null);
+        try {
+            new AuditChange(field: '', oldValue: null, newValue: null);
+            Assert::fail('Expected InvalidArgumentException');
+        } catch (InvalidArgumentException $e) {
+            Assert::string($e->getMessage())->contains('Change field must not be empty');
+        }
     }
 }

@@ -5,9 +5,6 @@ declare(strict_types=1);
 namespace Rasuvaeff\Yii3AuditLog\Tests;
 
 use DateTimeImmutable;
-use PHPUnit\Framework\Attributes\CoversClass;
-use PHPUnit\Framework\Attributes\Test;
-use PHPUnit\Framework\TestCase;
 use Rasuvaeff\Yii3AuditLog\AuditActor;
 use Rasuvaeff\Yii3AuditLog\AuditChange;
 use Rasuvaeff\Yii3AuditLog\AuditChangeSet;
@@ -16,17 +13,22 @@ use Rasuvaeff\Yii3AuditLog\AuditMetadata;
 use Rasuvaeff\Yii3AuditLog\AuditSubject;
 use Rasuvaeff\Yii3AuditLog\InMemoryAuditWriter;
 use Rasuvaeff\Yii3AuditLog\SensitiveValueMasker;
+use Testo\Assert;
+use Testo\Codecov\Covers;
+use Testo\Lifecycle\BeforeTest;
+use Testo\Test;
 
-#[CoversClass(AuditLogger::class)]
-final class AuditLoggerTest extends TestCase
+#[Test]
+#[Covers(AuditLogger::class)]
+final class AuditLoggerTest
 {
     private InMemoryAuditWriter $writer;
     private AuditLogger $logger;
     private AuditActor $actor;
     private AuditSubject $subject;
 
-    #[\Override]
-    protected function setUp(): void
+    #[BeforeTest]
+    public function setUp(): void
     {
         $this->writer = new InMemoryAuditWriter();
         $this->logger = new AuditLogger(
@@ -44,7 +46,6 @@ final class AuditLoggerTest extends TestCase
         ]);
     }
 
-    #[Test]
     public function logWritesEvent(): void
     {
         $this->logger->log(
@@ -54,15 +55,14 @@ final class AuditLoggerTest extends TestCase
             changes: $this->changeSet(),
         );
 
-        $this->assertSame(1, $this->writer->count());
+        Assert::same($this->writer->count(), 1);
         $event = $this->writer->getEvents()[0];
-        $this->assertSame('update', $event->getAction());
-        $this->assertSame('order', $event->getSubject()->getType());
-        $this->assertSame('42', $event->getSubject()->getId());
-        $this->assertSame('2026-06-01 12:00:00', $event->getOccurredAt()->format('Y-m-d H:i:s'));
+        Assert::same($event->getAction(), 'update');
+        Assert::same($event->getSubject()->getType(), 'order');
+        Assert::same($event->getSubject()->getId(), '42');
+        Assert::same($event->getOccurredAt()->format('Y-m-d H:i:s'), '2026-06-01 12:00:00');
     }
 
-    #[Test]
     public function logChangeWritesUpdateAction(): void
     {
         $this->logger->logChange(
@@ -71,10 +71,9 @@ final class AuditLoggerTest extends TestCase
             changes: $this->changeSet(),
         );
 
-        $this->assertSame('update', $this->writer->getEvents()[0]->getAction());
+        Assert::same($this->writer->getEvents()[0]->getAction(), 'update');
     }
 
-    #[Test]
     public function logCreateWritesCreateAction(): void
     {
         $this->logger->logCreate(
@@ -83,10 +82,9 @@ final class AuditLoggerTest extends TestCase
             changes: $this->changeSet(),
         );
 
-        $this->assertSame('create', $this->writer->getEvents()[0]->getAction());
+        Assert::same($this->writer->getEvents()[0]->getAction(), 'create');
     }
 
-    #[Test]
     public function logDeleteWritesDeleteAction(): void
     {
         $this->logger->logDelete(
@@ -95,10 +93,9 @@ final class AuditLoggerTest extends TestCase
             changes: $this->changeSet(),
         );
 
-        $this->assertSame('delete', $this->writer->getEvents()[0]->getAction());
+        Assert::same($this->writer->getEvents()[0]->getAction(), 'delete');
     }
 
-    #[Test]
     public function skipsEmptyChangeSetByDefault(): void
     {
         $this->logger->logChange(
@@ -107,10 +104,9 @@ final class AuditLoggerTest extends TestCase
             changes: AuditChangeSet::empty(),
         );
 
-        $this->assertSame(0, $this->writer->count());
+        Assert::same($this->writer->count(), 0);
     }
 
-    #[Test]
     public function writesEmptyChangeSetWhenSkipDisabled(): void
     {
         $logger = new AuditLogger(
@@ -125,10 +121,9 @@ final class AuditLoggerTest extends TestCase
             changes: AuditChangeSet::empty(),
         );
 
-        $this->assertSame(1, $this->writer->count());
+        Assert::same($this->writer->count(), 1);
     }
 
-    #[Test]
     public function maskerIsAppliedBeforeWriting(): void
     {
         $logger = new AuditLogger(
@@ -146,35 +141,28 @@ final class AuditLoggerTest extends TestCase
 
         $event = $this->writer->getEvents()[0];
         $eventChanges = $event->getChangeSet()->getChanges();
-        $this->assertSame('***', $eventChanges[0]->getOldValue());
-        $this->assertSame('***', $eventChanges[0]->getNewValue());
-        $this->assertSame('new', $eventChanges[1]->getOldValue());
+        Assert::same($eventChanges[0]->getOldValue(), '***');
+        Assert::same($eventChanges[0]->getNewValue(), '***');
+        Assert::same($eventChanges[1]->getOldValue(), 'new');
     }
 
-    #[Test]
     public function maskedEmptyChangeSetIsSkipped(): void
     {
-        // If masking produces same value on both sides for all changes,
-        // fromArrays would return empty set. Here test that masker result
-        // being empty is also skipped.
         $logger = new AuditLogger(
             writer: $this->writer,
             clock: new StubClock(new DateTimeImmutable()),
             masker: new SensitiveValueMasker(sensitiveKeys: ['status']),
         );
 
-        // After masking status old=*** new=*** — not equal, still written.
-        // But empty set itself is skipped.
         $logger->logChange(
             actor: $this->actor,
             subject: $this->subject,
             changes: AuditChangeSet::empty(),
         );
 
-        $this->assertSame(0, $this->writer->count());
+        Assert::same($this->writer->count(), 0);
     }
 
-    #[Test]
     public function metadataIsPassedToEvent(): void
     {
         $meta = new AuditMetadata(requestId: 'req-1', ip: '127.0.0.1');
@@ -187,23 +175,21 @@ final class AuditLoggerTest extends TestCase
         );
 
         $event = $this->writer->getEvents()[0];
-        $this->assertSame('req-1', $event->getMetadata()?->getRequestId());
-        $this->assertSame('127.0.0.1', $event->getMetadata()?->getIp());
+        Assert::same($event->getMetadata()?->getRequestId(), 'req-1');
+        Assert::same($event->getMetadata()?->getIp(), '127.0.0.1');
     }
 
-    #[Test]
     public function eventHasUniqueId(): void
     {
         $this->logger->logChange(actor: $this->actor, subject: $this->subject, changes: $this->changeSet());
         $this->logger->logChange(actor: $this->actor, subject: $this->subject, changes: $this->changeSet());
 
         $ids = array_map(fn($e) => $e->getId(), $this->writer->getEvents());
-        $this->assertMatchesRegularExpression('/^[a-f0-9]{32}$/', $ids[0]);
-        $this->assertMatchesRegularExpression('/^[a-f0-9]{32}$/', $ids[1]);
-        $this->assertNotSame($ids[0], $ids[1]);
+        Assert::true(preg_match('/^[a-f0-9]{32}$/', $ids[0]) === 1);
+        Assert::true(preg_match('/^[a-f0-9]{32}$/', $ids[1]) === 1);
+        Assert::notSame($ids[0], $ids[1]);
     }
 
-    #[Test]
     public function systemActorIsSupported(): void
     {
         $this->logger->logChange(
@@ -213,6 +199,6 @@ final class AuditLoggerTest extends TestCase
         );
 
         $event = $this->writer->getEvents()[0];
-        $this->assertTrue($event->getActor()->isSystem());
+        Assert::true($event->getActor()->isSystem());
     }
 }
