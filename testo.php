@@ -8,10 +8,15 @@ use Testo\Application\Config\SuiteConfig;
 use Testo\Bench\BenchmarkPlugin;
 
 return new ApplicationConfig(
+    src: ['src'],
     suites: [
         new SuiteConfig(
+            name: 'Unit',
+            location: ['tests'],
+        ),
+        new SuiteConfig(
             name: 'Benchmarks',
-            location: new FinderConfig(include: ['benchmarks']),
+            location: ['benchmarks'],
             plugins: [new BenchmarkPlugin()],
         ),
     ],

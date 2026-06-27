@@ -4,16 +4,16 @@ declare(strict_types=1);
 
 namespace Rasuvaeff\Yii3AuditLog\Tests;
 
-use PHPUnit\Framework\Attributes\CoversClass;
-use PHPUnit\Framework\Attributes\Test;
-use PHPUnit\Framework\TestCase;
 use Rasuvaeff\Yii3AuditLog\AuditChange;
 use Rasuvaeff\Yii3AuditLog\AuditChangeSet;
+use Testo\Assert;
+use Testo\Codecov\Covers;
+use Testo\Test;
 
-#[CoversClass(AuditChangeSet::class)]
-final class AuditChangeSetTest extends TestCase
+#[Test]
+#[Covers(AuditChangeSet::class)]
+final class AuditChangeSetTest
 {
-    #[Test]
     public function fromArraysDetectsChangedFields(): void
     {
         $set = AuditChangeSet::fromArrays(
@@ -21,13 +21,12 @@ final class AuditChangeSetTest extends TestCase
             new: ['status' => 'paid', 'total' => 0],
         );
 
-        $this->assertSame(1, $set->count());
-        $this->assertSame('status', $set->getChanges()[0]->getField());
-        $this->assertSame('new', $set->getChanges()[0]->getOldValue());
-        $this->assertSame('paid', $set->getChanges()[0]->getNewValue());
+        Assert::same($set->count(), 1);
+        Assert::same($set->getChanges()[0]->getField(), 'status');
+        Assert::same($set->getChanges()[0]->getOldValue(), 'new');
+        Assert::same($set->getChanges()[0]->getNewValue(), 'paid');
     }
 
-    #[Test]
     public function fromArraysDetectsAddedFields(): void
     {
         $set = AuditChangeSet::fromArrays(
@@ -35,12 +34,11 @@ final class AuditChangeSetTest extends TestCase
             new: ['note' => 'added'],
         );
 
-        $this->assertSame(1, $set->count());
-        $this->assertNull($set->getChanges()[0]->getOldValue());
-        $this->assertSame('added', $set->getChanges()[0]->getNewValue());
+        Assert::same($set->count(), 1);
+        Assert::null($set->getChanges()[0]->getOldValue());
+        Assert::same($set->getChanges()[0]->getNewValue(), 'added');
     }
 
-    #[Test]
     public function fromArraysDetectsRemovedFields(): void
     {
         $set = AuditChangeSet::fromArrays(
@@ -48,12 +46,11 @@ final class AuditChangeSetTest extends TestCase
             new: [],
         );
 
-        $this->assertSame(1, $set->count());
-        $this->assertSame('removed', $set->getChanges()[0]->getOldValue());
-        $this->assertNull($set->getChanges()[0]->getNewValue());
+        Assert::same($set->count(), 1);
+        Assert::same($set->getChanges()[0]->getOldValue(), 'removed');
+        Assert::null($set->getChanges()[0]->getNewValue());
     }
 
-    #[Test]
     public function fromArraysProducesEmptySetForIdenticalArrays(): void
     {
         $set = AuditChangeSet::fromArrays(
@@ -61,11 +58,10 @@ final class AuditChangeSetTest extends TestCase
             new: ['status' => 'paid', 'total' => 99],
         );
 
-        $this->assertTrue($set->isEmpty());
-        $this->assertSame(0, $set->count());
+        Assert::true($set->isEmpty());
+        Assert::same($set->count(), 0);
     }
 
-    #[Test]
     public function fromArraysHandlesMultipleChanges(): void
     {
         $set = AuditChangeSet::fromArrays(
@@ -73,25 +69,23 @@ final class AuditChangeSetTest extends TestCase
             new: ['a' => 1, 'b' => 99, 'c' => 100],
         );
 
-        $this->assertSame(2, $set->count());
+        Assert::same($set->count(), 2);
     }
 
-    #[Test]
     public function emptyFactoryCreatesEmptySet(): void
     {
         $set = AuditChangeSet::empty();
 
-        $this->assertTrue($set->isEmpty());
-        $this->assertSame([], $set->getChanges());
+        Assert::true($set->isEmpty());
+        Assert::same($set->getChanges(), []);
     }
 
-    #[Test]
     public function constructorWithChanges(): void
     {
         $change = new AuditChange(field: 'status', oldValue: 'a', newValue: 'b');
         $set = new AuditChangeSet([$change]);
 
-        $this->assertFalse($set->isEmpty());
-        $this->assertSame(1, $set->count());
+        Assert::false($set->isEmpty());
+        Assert::same($set->count(), 1);
     }
 }

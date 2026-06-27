@@ -5,19 +5,19 @@ declare(strict_types=1);
 namespace Rasuvaeff\Yii3AuditLog\Tests;
 
 use DateTimeImmutable;
-use PHPUnit\Framework\Attributes\CoversClass;
-use PHPUnit\Framework\Attributes\Test;
-use PHPUnit\Framework\TestCase;
 use Rasuvaeff\Yii3AuditLog\AuditActor;
 use Rasuvaeff\Yii3AuditLog\AuditChangeSet;
 use Rasuvaeff\Yii3AuditLog\AuditEvent;
 use Rasuvaeff\Yii3AuditLog\AuditSubject;
 use Rasuvaeff\Yii3AuditLog\NullAuditWriter;
+use Testo\Assert;
+use Testo\Codecov\Covers;
+use Testo\Test;
 
-#[CoversClass(NullAuditWriter::class)]
-final class NullAuditWriterTest extends TestCase
+#[Test]
+#[Covers(NullAuditWriter::class)]
+final class NullAuditWriterTest
 {
-    #[Test]
     public function writeDoesNothing(): void
     {
         $writer = new NullAuditWriter();
@@ -31,9 +31,8 @@ final class NullAuditWriterTest extends TestCase
             occurredAt: new DateTimeImmutable(),
         );
 
-        // Must not throw
         $writer->write($event);
 
-        $this->assertTrue(true);
+        Assert::true(true);
     }
 }

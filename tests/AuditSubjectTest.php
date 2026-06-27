@@ -5,38 +5,40 @@ declare(strict_types=1);
 namespace Rasuvaeff\Yii3AuditLog\Tests;
 
 use InvalidArgumentException;
-use PHPUnit\Framework\Attributes\CoversClass;
-use PHPUnit\Framework\Attributes\Test;
-use PHPUnit\Framework\TestCase;
 use Rasuvaeff\Yii3AuditLog\AuditSubject;
+use Testo\Assert;
+use Testo\Codecov\Covers;
+use Testo\Test;
 
-#[CoversClass(AuditSubject::class)]
-final class AuditSubjectTest extends TestCase
+#[Test]
+#[Covers(AuditSubject::class)]
+final class AuditSubjectTest
 {
-    #[Test]
     public function createsViaFactory(): void
     {
         $subject = AuditSubject::of(type: 'order', id: '42');
 
-        $this->assertSame('order', $subject->getType());
-        $this->assertSame('42', $subject->getId());
+        Assert::same($subject->getType(), 'order');
+        Assert::same($subject->getId(), '42');
     }
 
-    #[Test]
     public function throwsOnEmptyType(): void
     {
-        $this->expectException(InvalidArgumentException::class);
-        $this->expectExceptionMessage('Subject type must not be empty');
-
-        AuditSubject::of(type: '', id: '1');
+        try {
+            AuditSubject::of(type: '', id: '1');
+            Assert::fail('Expected InvalidArgumentException');
+        } catch (InvalidArgumentException $e) {
+            Assert::string($e->getMessage())->contains('Subject type must not be empty');
+        }
     }
 
-    #[Test]
     public function throwsOnEmptyId(): void
     {
-        $this->expectException(InvalidArgumentException::class);
-        $this->expectExceptionMessage('Subject id must not be empty');
-
-        AuditSubject::of(type: 'order', id: '');
+        try {
+            AuditSubject::of(type: 'order', id: '');
+            Assert::fail('Expected InvalidArgumentException');
+        } catch (InvalidArgumentException $e) {
+            Assert::string($e->getMessage())->contains('Subject id must not be empty');
+        }
     }
 }
