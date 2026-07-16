@@ -7,6 +7,7 @@
 [![Psalm Level](https://shepherd.dev/github/rasuvaeff/yii3-audit-log/level.svg)](https://shepherd.dev/github/rasuvaeff/yii3-audit-log)
 [![PHP](https://img.shields.io/packagist/dependency-v/rasuvaeff/yii3-audit-log/php)](https://packagist.org/packages/rasuvaeff/yii3-audit-log)
 [![License](https://poser.pugx.org/rasuvaeff/yii3-audit-log/license)](https://packagist.org/packages/rasuvaeff/yii3-audit-log)
+[Русская версия](README.ru.md)
 
 Audit trail for Yii3 applications: who changed what and when, with sensitive
 value masking. Stateless core — bring your own writer (DB adapter lives in a
