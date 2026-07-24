@@ -65,6 +65,9 @@
         },
         "config-plugin-options": {
             "source-directory": "config"
+        },
+        "skills": {
+            "source": "resources/skills"
         }
     },
     "scripts": {
