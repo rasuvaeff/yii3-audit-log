@@ -11,12 +11,21 @@ use Psr\Clock\ClockInterface;
  */
 final readonly class AuditLogger
 {
+    private AuditEventIdGeneratorInterface $idGenerator;
+
+    /**
+     * @param ?AuditEventIdGeneratorInterface $idGenerator null keeps the historical
+     *                                                     format ({@see RandomHexIdGenerator})
+     */
     public function __construct(
         private AuditWriter $writer,
         private ClockInterface $clock,
         private ?SensitiveValueMasker $masker = null,
         private bool $skipEmptyChangeSets = true,
-    ) {}
+        ?AuditEventIdGeneratorInterface $idGenerator = null,
+    ) {
+        $this->idGenerator = $idGenerator ?? new RandomHexIdGenerator();
+    }
 
     public function log(
         AuditActor $actor,
@@ -34,7 +43,7 @@ final readonly class AuditLogger
         }
 
         $event = new AuditEvent(
-            id: bin2hex(random_bytes(16)),
+            id: $this->idGenerator->generate(),
             actor: $actor,
             action: $action,
             subject: $subject,

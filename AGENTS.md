@@ -16,6 +16,9 @@ Public API:
 - `AuditChangeSet` — diff of changes; `::fromArrays(old, new)`, `::empty()`
 - `AuditChange` — single field change: field, oldValue, newValue
 - `AuditMetadata` — optional request context: requestId, ip, userAgent
+- `AuditEventIdGeneratorInterface` — produces the event id
+- `RandomHexIdGenerator` — default: 32 random hex characters
+- `Uuid7IdGenerator` — UUIDv7 as 32 hex characters (needs `symfony/uid`)
 - `AuditWriter` — writer interface
 - `NullAuditWriter` — no-op writer
 - `InMemoryAuditWriter` — test writer
@@ -23,8 +26,9 @@ Public API:
 
 DB writer lives in a separate adapter package.
 
-Yii3 config-plugin wiring: `config/di.php` binds only `AuditLogger` and
-`SensitiveValueMasker`. It must never bind `AuditWriter` or `ClockInterface`;
+Yii3 config-plugin wiring: `config/di.php` binds `AuditLogger`,
+`SensitiveValueMasker` and `AuditEventIdGeneratorInterface` (to
+`RandomHexIdGenerator`). It must never bind `AuditWriter` or `ClockInterface`;
 those are owned by exactly one backend package or the application.
 
 ## Golden rules
@@ -35,7 +39,9 @@ those are owned by exactly one backend package or the application.
 3. **Masker runs before writer.** Apply `SensitiveValueMasker` inside `AuditLogger::log()`
    before passing the event to the writer.
 4. **DI one-source rule.** Core config-plugin wiring must not bind `AuditWriter`
-   or `ClockInterface`; bind them in a backend package or app config.
+   or `ClockInterface`; bind them in a backend package or app config. The id
+   generator is different: no backend package supplies one, so the core binds
+   the default and an application overrides that binding.
 5. **Preserve the public contract.** Update README + tests with any API change.
 
 ## Commands
@@ -72,7 +78,17 @@ make release-check
 - `AuditLogger` skips empty change sets by default (`skipEmptyChangeSets: true`).
 - `SensitiveValueMasker` compares keys case-insensitively; masked value is `'***'`.
 - Default sensitive keys: `password`, `secret`, `token`, `api_key`, `credit_card`.
-- `AuditEvent` id is auto-generated (32-char hex) by `AuditLogger::log()`.
+- `AuditEvent` id comes from `AuditEventIdGeneratorInterface`, never inline.
+  The default `RandomHexIdGenerator` (32-char hex) is the historical format and
+  must stay the default — changing it silently rewrites every installation's id
+  scheme. `Uuid7IdGenerator` is opt-in and needs `symfony/uid`, which is a
+  `require-dev` + `suggest`: because its symbol is not resolvable from
+  `require`, `composer-require-checker` runs with `composer-require-checker.json`
+  whitelisting exactly `Symfony\Component\Uid\Uuid`. Never widen that list to
+  silence an unrelated failure — add the missing dependency instead.
+- **Both shipped generators are exactly 32 characters** — the width of
+  `yii3-audit-log-db`'s `id VARCHAR(32)`. A custom generator (or, later, an
+  externally supplied id) must respect that ceiling or the insert fails.
 - `occurredAt` timestamp comes from injected `ClockInterface`.
 - Code: `declare(strict_types=1)`, `final readonly class`, `#[\Override]`, explicit types.
 

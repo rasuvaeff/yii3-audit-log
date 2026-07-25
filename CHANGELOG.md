@@ -1,5 +1,22 @@
 # Changelog
 
+## 1.2.0 — 2026-07-25
+
+- The audit event id is now produced by `AuditEventIdGeneratorInterface`
+  instead of being hard-coded. The default `RandomHexIdGenerator` keeps the
+  historical format (32 random hex characters), so nothing changes unless the
+  interface is rebound; `AuditLogger`'s new `idGenerator` argument is last and
+  optional.
+- Add `Uuid7IdGenerator`: UUIDv7 rendered as 32 hex characters (dashes
+  stripped, so it fits `yii3-audit-log-db`'s existing `VARCHAR(32)` column with
+  no migration). Time-ordered ids stop a random primary key from scattering
+  InnoDB inserts across pages in an append-only, ever-growing table, and give
+  a tie-breaker for events within the same second. Requires `symfony/uid`
+  (a `suggest`, not a hard dependency).
+- `config/di.php` binds `AuditEventIdGeneratorInterface` to
+  `RandomHexIdGenerator`; an application switches generators with one line in
+  its own DI config.
+
 ## 1.1.0 — 2026-07-25
 
 - Ship an AI agent skill (`resources/skills/rasuvaeff-yii3-audit-log/SKILL.md` +

@@ -38,8 +38,9 @@ hands it to an `AuditWriter`. Namespace `Rasuvaeff\Yii3AuditLog\`.
    `write()` is already masked; double-masking or writer-side masking hides
    bugs and breaks the core guarantee.
 
-4. **DI one-source rule.** The core config-plugin binds only `AuditLogger`
-   and `SensitiveValueMasker`. `AuditWriter` and `Psr\Clock\ClockInterface`
+4. **DI one-source rule.** The core config-plugin binds `AuditLogger`,
+   `SensitiveValueMasker` and `AuditEventIdGeneratorInterface`
+   (=> `RandomHexIdGenerator`). `AuditWriter` and `Psr\Clock\ClockInterface`
    must be bound exactly once — by a backend package (e.g.
    `yii3-audit-log-db`) or by app config. Binding them in two places gives
    `yiisoft/config` "Duplicate key" at runtime.
@@ -49,7 +50,19 @@ hands it to an `AuditWriter`. Namespace `Rasuvaeff\Yii3AuditLog\`.
    PSR-3 logging — do not route it to a rotating app log; use
    `rasuvaeff/yii3-audit-log-db` or your own durable writer.
 
-6. **Empty change sets are silently skipped** (`skipEmptyChangeSets: true`
+6. **Event ids come from `AuditEventIdGeneratorInterface`, never inline.**
+   The default `RandomHexIdGenerator` (32 random hex chars) is the historical
+   format; `Uuid7IdGenerator` makes ids time-ordered for large audit tables
+   and needs `symfony/uid` (a `suggest`). Both are exactly 32 characters —
+   the width of `yii3-audit-log-db`'s `VARCHAR(32)` column, so a custom
+   generator must respect that ceiling or the insert fails.
+
+   ```php
+   // config/common/di/audit-log.php — app definitions win over the package's
+   AuditEventIdGeneratorInterface::class => Uuid7IdGenerator::class,
+   ```
+
+7. **Empty change sets are silently skipped** (`skipEmptyChangeSets: true`
    by default), and `AuditChangeSet::fromArrays()` keeps only fields where
    `old !== new` (strict). "log() wrote nothing" for a no-op update is
    expected behavior, not a bug.

@@ -20,6 +20,7 @@ Audit trail для Yii3-приложений: кто, что и когда из�
 
 - PHP 8.3+
 - `psr/clock` ^1.0
+- `symfony/uid` ^7.0 || ^8.0 — опционально, только для `Uuid7IdGenerator`
 
 ## Установка
 
@@ -30,7 +31,8 @@ composer require rasuvaeff/yii3-audit-log
 ## config-plugin Yii3
 
 Пакет поставляет `config/di.php` и `config/params.php` через config-plugin. Он
-конфигурирует `AuditLogger` и `SensitiveValueMasker`, но намеренно НЕ биндит
+конфигурирует `AuditLogger`, `SensitiveValueMasker` и
+`AuditEventIdGeneratorInterface` (на `RandomHexIdGenerator`), но намеренно НЕ биндит
 `AuditWriter` и `Psr\Clock\ClockInterface`. Установите ровно один адаптер writer-а
 или забиндите `AuditWriter` в конфиге приложения:
 
@@ -56,6 +58,51 @@ return [
 ```
 
 ## Использование
+
+### Идентификаторы событий
+
+Id события — это первичный ключ таблицы аудита, поэтому его формат это выбор,
+а не деталь реализации:
+
+| Генератор | id | Когда |
+|---|---|---|
+| `RandomHexIdGenerator` (по умолчанию) | 32 случайных hex-символа | что угодно; сохраняет исторический формат |
+| `Uuid7IdGenerator` | UUIDv7 в виде 32 hex-символов | большие растущие таблицы аудита |
+
+Случайный первичный ключ разбрасывает вставки InnoDB по страницам (таблица
+аудита append-only и только растёт, поэтому фрагментация накапливается), а
+упорядоченный по времени пишется в конец. Плюс он сортируется хронологически —
+это дешёвый tie-breaker для событий внутри одной секунды, по `occurred_at`
+их не упорядочить.
+
+`Uuid7IdGenerator` намеренно убирает дефисы: 32 символа — та же ширина, что и
+у формата по умолчанию, поэтому он ложится в существующую колонку
+`VARCHAR(32)` пакета
+[rasuvaeff/yii3-audit-log-db](https://github.com/rasuvaeff/yii3-audit-log-db)
+без миграции. Ему нужен `symfony/uid` — он в `suggest` и ставится, только если
+генератор используется:
+
+```bash
+composer require symfony/uid
+```
+
+```php
+// config/common/di/audit-log.php
+use Rasuvaeff\Yii3AuditLog\AuditEventIdGeneratorInterface;
+use Rasuvaeff\Yii3AuditLog\Uuid7IdGenerator;
+
+return [
+    AuditEventIdGeneratorInterface::class => Uuid7IdGenerator::class,
+];
+```
+
+Определения приложения побеждают пакетные, так что эта одна строка и есть весь
+переключатель. Собственная реализация `AuditEventIdGeneratorInterface` (ULID,
+принятая в проекте схема id, фиксированное значение в тестах) биндится так же.
+
+Смена генератора не переписывает существующие строки: у старых событий
+остаются случайные id, новые становятся упорядоченными. И те, и другие — 32
+hex-символа, поэтому ниже по течению менять нечего.
 
 ### Базовое логирование
 
@@ -144,11 +191,18 @@ $logger->logChange(
 
 | Метод | Описание |
 |---|---|
-| `__construct(writer, clock, masker?, skipEmptyChangeSets?)` | По умолчанию: skip empty sets = true |
+| `__construct(writer, clock, masker?, skipEmptyChangeSets?, idGenerator?)` | По умолчанию: skip empty sets = true, генератор id = `RandomHexIdGenerator` |
 | `log(actor, action, subject, changes, metadata?)` | Универсальная запись |
 | `logCreate(actor, subject, changes, metadata?)` | action = `'create'` |
 | `logChange(actor, subject, changes, metadata?)` | action = `'update'` |
 | `logDelete(actor, subject, changes, metadata?)` | action = `'delete'` |
+
+### AuditEventIdGeneratorInterface
+
+| Реализация | Что выдаёт |
+|---|---|
+| `RandomHexIdGenerator` (по умолчанию) | 32 hex-символа, 128 случайных бит |
+| `Uuid7IdGenerator` | UUIDv7 в виде 32 hex-символов (нужен `symfony/uid`) |
 
 ### AuditActor
 
