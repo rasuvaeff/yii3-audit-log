@@ -190,6 +190,36 @@ final class AuditLoggerTest
         Assert::notSame($ids[0], $ids[1]);
     }
 
+    public function defaultIdFormatIsUnchanged(): void
+    {
+        $this->logger->log(
+            actor: $this->actor,
+            action: 'update',
+            subject: $this->subject,
+            changes: new AuditChangeSet([new AuditChange('status', 'new', 'paid')]),
+        );
+
+        Assert::same(preg_match('/^[0-9a-f]{32}$/', $this->writer->getEvents()[0]->getId()), 1);
+    }
+
+    public function idComesFromTheConfiguredGenerator(): void
+    {
+        $logger = new AuditLogger(
+            writer: $this->writer,
+            clock: new StubClock(new DateTimeImmutable('2026-06-01 12:00:00')),
+            idGenerator: new FixedIdGenerator('fixed-id'),
+        );
+
+        $logger->log(
+            actor: $this->actor,
+            action: 'update',
+            subject: $this->subject,
+            changes: new AuditChangeSet([new AuditChange('status', 'new', 'paid')]),
+        );
+
+        Assert::same($this->writer->getEvents()[0]->getId(), 'fixed-id');
+    }
+
     public function systemActorIsSupported(): void
     {
         $this->logger->logChange(

@@ -20,6 +20,7 @@ separate package).
 
 - PHP 8.3+
 - `psr/clock` ^1.0
+- `symfony/uid` ^7.0 || ^8.0 — optional, only for `Uuid7IdGenerator`
 
 ## Installation
 
@@ -30,8 +31,9 @@ composer require rasuvaeff/yii3-audit-log
 ## Yii3 config-plugin
 
 The package ships `config/di.php` and `config/params.php` via config-plugin.
-It wires `AuditLogger` and `SensitiveValueMasker`, but intentionally does not
-bind `AuditWriter` or `Psr\Clock\ClockInterface`. Install exactly one writer
+It wires `AuditLogger`, `SensitiveValueMasker` and
+`AuditEventIdGeneratorInterface` (to `RandomHexIdGenerator`), but intentionally
+does not bind `AuditWriter` or `Psr\Clock\ClockInterface`. Install exactly one writer
 adapter or bind `AuditWriter` in your application config:
 
 ```php
@@ -56,6 +58,50 @@ return [
 ```
 
 ## Usage
+
+### Event ids
+
+Event ids are the primary key of the audit table, so their format is a
+choice, not an implementation detail:
+
+| Generator | id | When |
+|---|---|---|
+| `RandomHexIdGenerator` (default) | 32 random hex characters | anything; keeps the historical format |
+| `Uuid7IdGenerator` | UUIDv7 rendered as 32 hex characters | large, growing audit tables |
+
+A random primary key scatters InnoDB inserts across pages (an audit table is
+append-only and only grows, so the fragmentation compounds), while a
+time-ordered one appends. It also sorts chronologically, which gives a cheap
+tie-breaker for events within the same second — `occurred_at` alone cannot
+order them.
+
+`Uuid7IdGenerator` strips the dashes deliberately: 32 characters is the same
+width as the default format, so it drops into the existing `VARCHAR(32)`
+column of [rasuvaeff/yii3-audit-log-db](https://github.com/rasuvaeff/yii3-audit-log-db)
+with no migration. It needs `symfony/uid` — a `suggest`, installed only if you
+use it:
+
+```bash
+composer require symfony/uid
+```
+
+```php
+// config/common/di/audit-log.php
+use Rasuvaeff\Yii3AuditLog\AuditEventIdGeneratorInterface;
+use Rasuvaeff\Yii3AuditLog\Uuid7IdGenerator;
+
+return [
+    AuditEventIdGeneratorInterface::class => Uuid7IdGenerator::class,
+];
+```
+
+Application definitions win over the package's, so this one line is the whole
+switch. Your own implementation of `AuditEventIdGeneratorInterface` (ULID, a
+project-wide id scheme, a fixed value in tests) binds the same way.
+
+Switching the generator does not rewrite existing rows: old events keep their
+random ids, new ones are ordered. Both are 32 hex characters, so nothing
+downstream needs to change.
 
 ### Basic logging
 
@@ -144,11 +190,18 @@ $logger->logChange(
 
 | Method | Description |
 |---|---|
-| `__construct(writer, clock, masker?, skipEmptyChangeSets?)` | Default: skip empty sets = true |
+| `__construct(writer, clock, masker?, skipEmptyChangeSets?, idGenerator?)` | Defaults: skip empty sets = true, id generator = `RandomHexIdGenerator` |
 | `log(actor, action, subject, changes, metadata?)` | Generic log |
 | `logCreate(actor, subject, changes, metadata?)` | action = `'create'` |
 | `logChange(actor, subject, changes, metadata?)` | action = `'update'` |
 | `logDelete(actor, subject, changes, metadata?)` | action = `'delete'` |
+
+### AuditEventIdGeneratorInterface
+
+| Implementation | Produces |
+|---|---|
+| `RandomHexIdGenerator` (default) | 32 hex characters, 128 random bits |
+| `Uuid7IdGenerator` | UUIDv7 as 32 hex characters (needs `symfony/uid`) |
 
 ### AuditActor
 

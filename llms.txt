@@ -14,11 +14,16 @@ composer require rasuvaeff/yii3-audit-log
 - Masking is case-insensitive; masked value is `'***'`.
 - Default sensitive keys: `password`, `secret`, `token`, `api_key`, `credit_card`.
 - DB writer lives in a separate adapter — core has no DB dependency.
+- Event id comes from `AuditEventIdGeneratorInterface`. Default
+  `RandomHexIdGenerator` = 32 random hex chars (historical format).
+  `Uuid7IdGenerator` = UUIDv7 as 32 hex chars, dashes stripped so it fits the
+  existing VARCHAR(32) column; needs `symfony/uid` (suggest).
 
 ## Yii3 config-plugin
 
 Package provides `config-plugin` with `config/di.php` and `config/params.php`.
-Core binds only `AuditLogger` and `SensitiveValueMasker`. It does NOT bind
+Core binds `AuditLogger`, `SensitiveValueMasker` and
+`AuditEventIdGeneratorInterface` (=> `RandomHexIdGenerator`). It does NOT bind
 `AuditWriter` or `Psr\Clock\ClockInterface`; a backend package or app config
 must provide those exactly once.
 
@@ -58,7 +63,17 @@ $logger = new AuditLogger(
     clock: $clock,
     masker: new SensitiveValueMasker(),  // optional
     skipEmptyChangeSets: true,           // default
+    idGenerator: new Uuid7IdGenerator(), // optional; default RandomHexIdGenerator
 );
+
+// Application-side switch (app definitions win over the package's):
+// AuditEventIdGeneratorInterface::class => Uuid7IdGenerator::class,
+
+interface AuditEventIdGeneratorInterface
+{
+    /** @return non-empty-string */
+    public function generate(): string;
+}
 
 $logger->logChange(actor: $actor, subject: $subject, changes: $changes);
 $logger->logCreate(actor: $actor, subject: $subject, changes: $changes);
