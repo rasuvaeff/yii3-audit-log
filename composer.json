@@ -35,7 +35,7 @@
         "symfony/uid": "^7.0 || ^8.0",
         "testo/bridge-infection": "^0.1.6",
         "testo/testo": "^0.10.25",
-        "vimeo/psalm": "^6.16"
+        "vimeo/psalm": "^7.0"
     },
     "suggest": {
         "symfony/uid": "Bind Uuid7IdGenerator to get time-ordered audit event ids (UUIDv7 as 32 hex chars)"
