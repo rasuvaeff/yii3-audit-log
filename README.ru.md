@@ -18,7 +18,7 @@ Audit trail для Yii3-приложений: кто, что и когда из�
 
 ## Требования
 
-- PHP 8.3+
+- PHP 8.3 – 8.6
 - `psr/clock` ^1.0
 - `symfony/uid` ^7.0 || ^8.0 — опционально, только для `Uuid7IdGenerator`
 
