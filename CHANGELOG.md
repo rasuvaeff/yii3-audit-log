@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.2.2 — 2026-11-27
+
+- Docs: the agent skill notes that the masker is optional (`new AuditLogger($writer, $clock)` masks nothing) and covers only the change set.
+
 ## 1.2.1 — 2026-11-22
 
 - Mutation testing now counts code the tests execute but do not name in `#[Covers]` (`infection --threads=max --with-uncovered`); the `PublicVisibility` mutator is off and default values in parameter lists are ignored. No `src/` changes.
