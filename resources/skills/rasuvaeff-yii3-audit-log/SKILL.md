@@ -33,9 +33,11 @@ hands it to an `AuditWriter`. Namespace `Rasuvaeff\Yii3AuditLog\`.
    match, not substring) must be added explicitly via the constructor or the
    `sensitiveKeys` param of `rasuvaeff/yii3-audit-log` config.
 
-3. **The masker runs inside `AuditLogger::log()` before the writer.** Never
-   mask in a custom `AuditWriter` — by contract the event arriving at
-   `write()` is already masked; double-masking or writer-side masking hides
+3. **The masker runs inside `AuditLogger::log()` before the writer.** It is
+   optional: the config plugin injects one, `new AuditLogger($writer, $clock)`
+   without `masker:` masks nothing. Only the change set is masked, not
+   metadata. Never mask in a custom `AuditWriter` — by contract the event
+   arriving at `write()` is already masked; double-masking or writer-side masking hides
    bugs and breaks the core guarantee.
 
 4. **DI one-source rule.** The core config-plugin binds `AuditLogger`,
